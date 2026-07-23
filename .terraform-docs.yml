@@ -1,0 +1,80 @@
+formatter: "markdown table"
+
+version: ""
+
+header-from: main.tf
+footer-from: ""
+
+recursive:
+  enabled: false
+
+sections:
+  hide: []
+  show: []
+
+content: |-
+  ## Usage
+
+  ```hcl
+  module "shield" {
+    source  = "Nullafi/nullafi-shield-managed-services/aws"
+    version = "~> 1.0"
+
+    region      = "us-east-1"
+    name_prefix = "shield"
+
+    squid_image         = "123456789012.dkr.ecr.us-east-1.amazonaws.com/nullafi/proxy:latest"
+    shield_web_ui_image = "123456789012.dkr.ecr.us-east-1.amazonaws.com/nullafi/shield:latest"
+    shield_icap_image   = "123456789012.dkr.ecr.us-east-1.amazonaws.com/nullafi/shield:latest"
+    shield_alert_image  = "123456789012.dkr.ecr.us-east-1.amazonaws.com/nullafi/shield:latest"
+
+    nullafi_license_key = var.nullafi_license_key
+
+    host_name           = "shield.example.com"
+    acme_dns01_provider = "route53"
+    route53_zone_id     = "Z1234567890ABC"
+
+    tags = {
+      Environment = "prod"
+    }
+  }
+  ```
+
+  See [examples/managed-services](./examples/managed-services) for a complete, deployable root config (provider + backend) that calls this module with a managed data layer (ElastiCache Redis + Amazon OpenSearch).
+
+  {{ .Requirements }}
+
+  {{ .Providers }}
+
+  {{ .Modules }}
+
+  {{ .Resources }}
+
+  {{ .Inputs }}
+
+  {{ .Outputs }}
+
+output:
+  file: "README.md"
+  mode: inject
+  template: |-
+    <!-- BEGIN_TF_DOCS -->
+    {{ .Content }}
+    <!-- END_TF_DOCS -->
+
+sort:
+  enabled: true
+  by: name
+
+settings:
+  anchor: true
+  color: true
+  description: false
+  escape: true
+  html: true
+  indent: 2
+  lockfile: true
+  read-comments: true
+  required: true
+  sensitive: true
+  type: true

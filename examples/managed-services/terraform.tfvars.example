@@ -1,0 +1,34 @@
+# Copy this file to terraform.tfvars and fill in real values.
+# terraform.tfvars is gitignored — never commit real credentials, license keys, or zone IDs.
+
+region      = "us-east-1"
+name_prefix = "managed-services"
+
+# Prefer environment variables (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY) or an
+# IAM role over setting these here.
+# aws_access_key = ""
+# aws_secret_key = ""
+
+# Shield hostname (must resolve to the NLB for Let's Encrypt to issue a cert)
+# host_name           = "shield.example.com"
+# acme_challenge_type = "DNS-01"
+# acme_dns01_provider = "route53"
+# route53_zone_id     = "ZXXXXXXXXXXXXX"
+
+# Shield license
+# For a license key file (value is a path to the file):
+# nullafi_license_key_file = "./license.key"
+# For a raw license key value instead:
+# nullafi_license_key = "REPLACE_WITH_LICENSE_KEY"
+
+# Docker images
+shield_alert_image  = "public.ecr.aws/nullafi/shield:latest"
+shield_icap_image   = "public.ecr.aws/nullafi/shield:latest"
+shield_web_ui_image = "public.ecr.aws/nullafi/shield:latest"
+squid_image         = "public.ecr.aws/nullafi/proxy:latest"
+
+# Squid MITM certificate/key + issuing root CA (optional — only if using the Squid proxy)
+# proxy_mitm_cert = "./nullafi.crt"
+# proxy_mitm_key  = "./nullafi.key"
+# proxy_root_ca   = "./nullafi_root_ca.crt"
+# proxy_port      = 44509
