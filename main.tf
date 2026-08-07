@@ -47,11 +47,12 @@ resource "aws_lb" "shield_web" {
 }
 
 resource "aws_lb_target_group" "shield_web_http" {
-  name        = "${var.name_prefix}-shield-http"
-  port        = 8080
-  protocol    = "TCP"
-  vpc_id      = module.vpc.vpc_id
-  target_type = "ip"
+  name               = "${var.name_prefix}-shield-http"
+  port               = 8080
+  protocol           = "TCP"
+  vpc_id             = module.vpc.vpc_id
+  target_type        = "ip"
+  preserve_client_ip = "true"
 
   health_check {
     enabled             = true
@@ -65,11 +66,12 @@ resource "aws_lb_target_group" "shield_web_http" {
 }
 
 resource "aws_lb_target_group" "shield_web_https" {
-  name        = "${var.name_prefix}-shield-https"
-  port        = 443
-  protocol    = "TCP"
-  vpc_id      = module.vpc.vpc_id
-  target_type = "ip"
+  name               = "${var.name_prefix}-shield-https"
+  port               = 443
+  protocol           = "TCP"
+  vpc_id             = module.vpc.vpc_id
+  target_type        = "ip"
+  preserve_client_ip = "true"
 
   health_check {
     enabled             = true
@@ -125,11 +127,12 @@ resource "aws_route53_record" "shield_web" {
 # Squid proxy – TCP passthrough on var.proxy_port via the same NLB
 # ------------------------------------------------------------------------------
 resource "aws_lb_target_group" "squid" {
-  name        = "${var.name_prefix}-squid"
-  port        = var.proxy_port
-  protocol    = "TCP"
-  vpc_id      = module.vpc.vpc_id
-  target_type = "ip"
+  name               = "${var.name_prefix}-squid"
+  port               = var.proxy_port
+  protocol           = "TCP"
+  vpc_id             = module.vpc.vpc_id
+  target_type        = "ip"
+  preserve_client_ip = "true"
 
   health_check {
     enabled             = true
