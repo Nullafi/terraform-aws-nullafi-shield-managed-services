@@ -122,8 +122,33 @@ resource "aws_route53_record" "shield_web" {
 }
 
 # ------------------------------------------------------------------------------
-# Squid proxy – TCP passthrough on var.proxy_port via the same NLB
+# Squid proxy – dedicated NLB with fixed (Elastic IP) public addresses, TCP
+# passthrough on var.proxy_port. Kept separate from the shield_web NLB so it
+# can carry static IPs without affecting the Shield Web UI listeners.
 # ------------------------------------------------------------------------------
+resource "aws_eip" "squid" {
+  count  = length(module.vpc.public_subnet_ids)
+  domain = "vpc"
+
+  tags = merge(var.tags, { Name = "${var.name_prefix}-squid-eip-${count.index}" })
+}
+
+resource "aws_lb" "squid" {
+  name               = "${var.name_prefix}-squid"
+  internal           = false
+  load_balancer_type = "network"
+
+  dynamic "subnet_mapping" {
+    for_each = module.vpc.public_subnet_ids
+    content {
+      subnet_id     = subnet_mapping.value
+      allocation_id = aws_eip.squid[subnet_mapping.key].id
+    }
+  }
+
+  tags = merge(var.tags, { Name = "${var.name_prefix}-squid-nlb" })
+}
+
 resource "aws_lb_target_group" "squid" {
   name               = "${var.name_prefix}-squid"
   port               = var.proxy_port
@@ -143,13 +168,30 @@ resource "aws_lb_target_group" "squid" {
 }
 
 resource "aws_lb_listener" "squid" {
-  load_balancer_arn = aws_lb.shield_web.arn
+  load_balancer_arn = aws_lb.squid.arn
   port              = var.proxy_port
   protocol          = "TCP"
 
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.squid.arn
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Route53 A record for the Squid proxy (optional – auto-creates DNS when
+# route53_zone_id and proxy_host_name are set). Points to the Squid NLB.
+# ------------------------------------------------------------------------------
+resource "aws_route53_record" "squid" {
+  count   = var.route53_zone_id != null && var.proxy_host_name != null ? 1 : 0
+  zone_id = var.route53_zone_id
+  name    = var.proxy_host_name
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.squid.dns_name
+    zone_id                = aws_lb.squid.zone_id
+    evaluate_target_health = true
   }
 }
 

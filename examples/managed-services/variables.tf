@@ -197,6 +197,12 @@ variable "proxy_port" {
   default     = 44509
 }
 
+variable "proxy_host_name" {
+  description = "Host name for the Squid proxy's own NLB (Route53 A record). Separate from host_name, which is used for Shield Web UI."
+  type        = string
+  default     = null
+}
+
 variable "autoscaling_min_capacity" {
   description = "Default minimum number of tasks for scalable services (used when autoscaling_capacity does not specify per service)."
   type        = number

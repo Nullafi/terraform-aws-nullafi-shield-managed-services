@@ -103,13 +103,28 @@ output "ssm_parameter_arns" {
 }
 
 output "nlb_dns_name" {
-  description = "NLB DNS name (Shield Web UI on ports 80/443, Squid proxy on var.proxy_port)."
+  description = "Shield Web UI NLB DNS name (ports 80/443)."
   value       = module.shield.nlb_dns_name
 }
 
 output "nlb_zone_id" {
-  description = "NLB Route53 zone ID (for alias records)."
+  description = "Shield Web UI NLB Route53 zone ID (for alias records)."
   value       = module.shield.nlb_zone_id
+}
+
+output "squid_nlb_dns_name" {
+  description = "Squid proxy NLB DNS name (var.proxy_port)."
+  value       = module.shield.squid_nlb_dns_name
+}
+
+output "squid_nlb_zone_id" {
+  description = "Squid proxy NLB Route53 zone ID (for alias records)."
+  value       = module.shield.squid_nlb_zone_id
+}
+
+output "squid_eips" {
+  description = "Elastic IP addresses assigned to the Squid proxy NLB (one per public subnet)."
+  value       = module.shield.squid_eips
 }
 
 output "shield_web_ui_url" {

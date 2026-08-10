@@ -60,6 +60,7 @@ module "shield" {
   proxy_mitm_key  = var.proxy_mitm_key
   proxy_root_ca   = var.proxy_root_ca
   proxy_port      = var.proxy_port
+  proxy_host_name = var.proxy_host_name
 
   autoscaling_min_capacity       = var.autoscaling_min_capacity
   autoscaling_max_capacity       = var.autoscaling_max_capacity
