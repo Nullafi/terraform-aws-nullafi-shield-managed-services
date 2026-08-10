@@ -548,7 +548,8 @@ module "service_discovery" {
 
 # ------------------------------------------------------------------------------
 # Security groups – backend (ECS), data (ECS), EFS mount targets
-# NLB preserves client IPs so 8080/443 must allow 0.0.0.0/0 for external access.
+# NLBs preserve client IPs so 8080/443 and var.proxy_port must allow 0.0.0.0/0
+# for external access.
 # ------------------------------------------------------------------------------
 resource "aws_security_group" "backend" {
   name_prefix = "${var.name_prefix}-backend-"
@@ -570,11 +571,11 @@ resource "aws_security_group" "backend" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
-    description = "Squid proxy (var.proxy_port) from VPC"
+    description = "Squid proxy (var.proxy_port) - NLB + VPC"
     from_port   = var.proxy_port
     to_port     = var.proxy_port
     protocol    = "tcp"
-    cidr_blocks = [module.vpc.vpc_cidr_block]
+    cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
     description = "Shield ICAP"
