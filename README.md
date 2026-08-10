@@ -23,7 +23,7 @@ Internet
   Amazon OpenSearch Service (data subnets)
 ```
 
-Only Shield Web UI and Squid are externally reachable, each via its own NLB — Squid's NLB carries static Elastic IPs (`squid_eips` output) so proxy clients can allowlist a fixed set of addresses, and can be given its own DNS name via `proxy_host_name` (an alias record to the Squid NLB, separate from `host_name`, which is Shield Web UI's). Every other service communicates internally over Cloud Map service discovery. Redis and the Activity store (Elasticsearch-compatible) are AWS-managed rather than run as containers.
+Only Shield Web UI and Squid are externally reachable, each via its own NLB — Squid's NLB carries static Elastic IPs (`squid_eips` output) and can be given its own DNS name via `proxy_host_name` (separate from `host_name`, which is Shield Web UI's). `proxy_host_name` is optional, but required whenever `route53_zone_id` is set — Terraform enforces this via variable validation, since a zone ID with no hostname would have nothing to create a record for. When both are set, Terraform auto-creates an alias A record pointing `proxy_host_name` at the Squid NLB. Every other service communicates internally over Cloud Map service discovery. Redis and the Activity store (Elasticsearch-compatible) are AWS-managed rather than run as containers.
 
 ## Notes
 
@@ -49,6 +49,8 @@ module "shield" {
   shield_alert_image  = "repo.ecr.com/nullafi/shield:latest"
 
   nullafi_license_key = var.nullafi_license_key
+
+  proxy_host_name = "proxy.example.com"
 
   host_name           = "shield.example.com"
   acme_dns01_provider = "route53"
@@ -163,7 +165,7 @@ See [examples/managed-services](./examples/managed-services) for a complete, dep
 | <a name="input_opensearch_engine_version"></a> [opensearch\_engine\_version](#input\_opensearch\_engine\_version) | OpenSearch engine version. | `string` | `"OpenSearch_2.11"` | no |
 | <a name="input_opensearch_instance_type"></a> [opensearch\_instance\_type](#input\_opensearch\_instance\_type) | OpenSearch instance type. | `string` | `"t3.small.search"` | no |
 | <a name="input_opensearch_volume_size"></a> [opensearch\_volume\_size](#input\_opensearch\_volume\_size) | OpenSearch EBS volume size in GB. | `number` | `20` | no |
-| <a name="input_proxy_host_name"></a> [proxy\_host\_name](#input\_proxy\_host\_name) | Host name for the Squid proxy's own NLB (Route53 A record). Separate from host\_name, which is used for Shield Web UI. | `string` | `null` | no |
+| <a name="input_proxy_host_name"></a> [proxy\_host\_name](#input\_proxy\_host\_name) | Host name for the Squid proxy's own NLB (Route53 A record). Separate from host\_name, which is used for Shield Web UI. Required when route53\_zone\_id is set. | `string` | `null` | no |
 | <a name="input_proxy_mitm_cert"></a> [proxy\_mitm\_cert](#input\_proxy\_mitm\_cert) | Path to Squid MITM certificate (PROXY\_MITM\_CERT). | `string` | `null` | no |
 | <a name="input_proxy_mitm_key"></a> [proxy\_mitm\_key](#input\_proxy\_mitm\_key) | Path to Squid MITM private key (PROXY\_MITM\_KEY). | `string` | `null` | no |
 | <a name="input_proxy_port"></a> [proxy\_port](#input\_proxy\_port) | Port the Squid proxy listens on and is exposed via the NLB (container port, target group, listener, and security group all use this). | `number` | `44509` | no |

@@ -30,6 +30,8 @@ content: |-
 
     nullafi_license_key = var.nullafi_license_key
 
+    proxy_host_name = "proxy.example.com"
+
     host_name           = "shield.example.com"
     acme_dns01_provider = "route53"
     route53_zone_id     = "Z1234567890ABC"

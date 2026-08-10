@@ -25,7 +25,7 @@ Internet
   Amazon OpenSearch Service (data subnets)
 ```
 
-All services run on ECS Fargate in private subnets. Only Shield Web UI and Squid are externally accessible, each via its own NLB — Squid's NLB carries static Elastic IPs so proxy clients can allowlist a fixed set of addresses, and can be given its own DNS name via `proxy_host_name` (an alias record to the Squid NLB, separate from `host_name`'s alias record for Shield Web UI). Redis and OpenSearch are AWS-managed instead of running as containers.
+All services run on ECS Fargate in private subnets. Only Shield Web UI and Squid are externally accessible, each via its own NLB — Squid's NLB carries static Elastic IPs so proxy clients can allowlist a fixed set of addresses, and can be given its own DNS name via `proxy_host_name` (separate from `host_name`, Shield Web UI's own alias record). `proxy_host_name` is optional, but required whenever `route53_zone_id` is set — Terraform enforces this via variable validation. Redis and OpenSearch are AWS-managed instead of running as containers.
 
 ## Prerequisites
 
@@ -38,7 +38,7 @@ All services run on ECS Fargate in private subnets. Only Shield Web UI and Squid
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
-# edit terraform.tfvars with your images, license key, hostname, etc.
+# edit terraform.tfvars with your images, license key, hostname, proxy_host_name, etc.
 
 # Load credentials (optional — you can also rely on your AWS profile/role)
 set -a && source .env && set +a
