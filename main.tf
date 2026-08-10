@@ -52,7 +52,6 @@ resource "aws_lb_target_group" "shield_web_http" {
   protocol           = "TCP"
   vpc_id             = module.vpc.vpc_id
   target_type        = "ip"
-  preserve_client_ip = "true"
 
   health_check {
     enabled             = true
@@ -71,7 +70,6 @@ resource "aws_lb_target_group" "shield_web_https" {
   protocol           = "TCP"
   vpc_id             = module.vpc.vpc_id
   target_type        = "ip"
-  preserve_client_ip = "true"
 
   health_check {
     enabled             = true
@@ -132,7 +130,6 @@ resource "aws_lb_target_group" "squid" {
   protocol           = "TCP"
   vpc_id             = module.vpc.vpc_id
   target_type        = "ip"
-  preserve_client_ip = "true"
 
   health_check {
     enabled             = true
