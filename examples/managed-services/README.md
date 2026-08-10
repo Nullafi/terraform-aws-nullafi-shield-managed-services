@@ -1,6 +1,6 @@
 # managed-services
 
-Example root config calling the [nullafi-shield-managed-services](../../) module with a managed data layer: **VPC** (single NAT gateway for cost savings), **NLB** (TCP passthrough for Shield Web UI with Let's Encrypt TLS via DNS-01), **ECS Fargate** cluster running 4 services (Shield Web UI, ICAP, Alert, Squid), **Cloud Map service discovery**, **EFS** (Shield config + certs), **S3** (logs/backups), **ElastiCache Redis**, **Amazon OpenSearch Service**, autoscaling, and CloudWatch alarms + dashboard.
+Example root config calling the [nullafi-shield-managed-services](../../) module with a managed data layer: **two NLBs** (TCP passthrough — one for Shield Web UI with Let's Encrypt TLS via DNS-01, one dedicated to the Squid proxy with static Elastic IPs), **VPC** (single NAT gateway for cost savings), **ECS Fargate** cluster running 4 services (Shield Web UI, ICAP, Alert, Squid), **Cloud Map service discovery**, **EFS** (Shield config + certs), **S3** (logs/backups), **ElastiCache Redis**, **Amazon OpenSearch Service**, autoscaling, and CloudWatch alarms + dashboard.
 
 See [SETUP.md](./SETUP.md) for a full step-by-step deployment guide.
 
@@ -9,10 +9,12 @@ See [SETUP.md](./SETUP.md) for a full step-by-step deployment guide.
 ```
 Internet
   │
-  └─► NLB (:80/:443 TCP passthrough, :44509 Squid) → ECS Fargate (backend subnets)
-        │                                  ├── Let's Encrypt TLS (ACME DNS-01)
-        │                                  └── Certs persisted on EFS
-        ▼
+  ├─► Shield Web NLB (:80/:443 TCP passthrough) ──────┐
+  │                                                    ▼
+  └─► Squid NLB (:44509, static Elastic IPs) ──► ECS Fargate (backend subnets)
+                                                  │       ├── Let's Encrypt TLS (ACME DNS-01)
+                                                  │       └── Certs persisted on EFS
+                                                  ▼
   Cloud Map (<name_prefix>.local)
   ├── squid.<name_prefix>.local:44509
   ├── shield-web-ui.<name_prefix>.local:8080
@@ -23,7 +25,7 @@ Internet
   Amazon OpenSearch Service (data subnets)
 ```
 
-All services run on ECS Fargate in private subnets. Only Shield Web UI (and Squid) are externally accessible via the NLB. Redis and OpenSearch are AWS-managed instead of running as containers.
+All services run on ECS Fargate in private subnets. Only Shield Web UI and Squid are externally accessible, each via its own NLB — Squid's NLB carries static Elastic IPs so proxy clients can allowlist a fixed set of addresses, and can be given its own DNS name via `proxy_host_name` (an alias record to the Squid NLB, separate from `host_name`'s alias record for Shield Web UI). Redis and OpenSearch are AWS-managed instead of running as containers.
 
 ## Prerequisites
 
@@ -50,4 +52,4 @@ See [SETUP.md](./SETUP.md) for details on every variable, DNS setup, monitoring,
 
 ## Outputs
 
-All outputs of the [root module](../../outputs.tf) are passed through — see [outputs.tf](./outputs.tf) for the full list, including `shield_web_ui_url`, `nlb_dns_name`, `elasticache_redis_endpoint`, `opensearch_endpoint`, and `cloudwatch_dashboard_name`.
+All outputs of the [root module](../../outputs.tf) are passed through — see [outputs.tf](./outputs.tf) for the full list, including `shield_web_ui_url`, `nlb_dns_name`, `squid_nlb_dns_name`, `squid_eips`, `elasticache_redis_endpoint`, `opensearch_endpoint`, and `cloudwatch_dashboard_name`.

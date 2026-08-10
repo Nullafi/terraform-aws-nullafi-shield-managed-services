@@ -1,16 +1,18 @@
 # terraform-aws-nullafi-shield-managed-services
 
-Terraform module that deploys the [Nullafi Shield](https://nullafi.com) stack on AWS ECS Fargate: **VPC** (single NAT gateway), **NLB** (TCP passthrough to Shield Web UI with Let's Encrypt TLS via ACME DNS-01), **ECS Fargate** cluster running Shield Web UI / ICAP / Alert / Squid, **Cloud Map** service discovery, **EFS** (Shield config + certs), **S3** (logs/backups), **ElastiCache Redis**, **Amazon OpenSearch Service**, per-service autoscaling, and CloudWatch alarms + a dashboard.
+Terraform module that deploys the [Nullafi Shield](https://nullafi.com) stack on AWS ECS Fargate: **two NLBs** (TCP passthrough — one for Shield Web UI with Let's Encrypt TLS via ACME DNS-01, one dedicated to the Squid proxy with static Elastic IPs), **VPC** (single NAT gateway), **ECS Fargate** cluster running Shield Web UI / ICAP / Alert / Squid, **Cloud Map** service discovery, **EFS** (Shield config + certs), **S3** (logs/backups), **ElastiCache Redis**, **Amazon OpenSearch Service**, per-service autoscaling, and CloudWatch alarms + a dashboard.
 
 ## Architecture
 
 ```
 Internet
   │
-  └─► NLB (:80/:443 TCP passthrough, :44509 Squid) → ECS Fargate (backend subnets)
-        │                                  ├── Let's Encrypt TLS (ACME DNS-01)
-        │                                  └── Certs persisted on EFS
-        ▼
+  ├─► Shield Web NLB (:80/:443 TCP passthrough) ──────┐
+  │                                                    ▼
+  └─► Squid NLB (:44509, static Elastic IPs) ──► ECS Fargate (backend subnets)
+                                                  │       ├── Let's Encrypt TLS (ACME DNS-01)
+                                                  │       └── Certs persisted on EFS
+                                                  ▼
   Cloud Map (<name_prefix>.local)
   ├── squid.<name_prefix>.local:44509
   ├── shield-web-ui.<name_prefix>.local:8080
@@ -21,7 +23,7 @@ Internet
   Amazon OpenSearch Service (data subnets)
 ```
 
-Only Shield Web UI and Squid are externally reachable, via the NLB. Every other service communicates internally over Cloud Map service discovery. Redis and the Activity store (Elasticsearch-compatible) are AWS-managed rather than run as containers.
+Only Shield Web UI and Squid are externally reachable, each via its own NLB — Squid's NLB carries static Elastic IPs (`squid_eips` output) so proxy clients can allowlist a fixed set of addresses, and can be given its own DNS name via `proxy_host_name` (an alias record to the Squid NLB, separate from `host_name`, which is Shield Web UI's). Every other service communicates internally over Cloud Map service discovery. Redis and the Activity store (Elasticsearch-compatible) are AWS-managed rather than run as containers.
 
 ## Notes
 
@@ -99,6 +101,7 @@ See [examples/managed-services](./examples/managed-services) for a complete, dep
 | [aws_cloudwatch_metric_alarm.ecs_cpu](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.ecs_memory](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.ecs_no_tasks](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
+| [aws_eip.squid](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip) | resource |
 | [aws_elasticache_replication_group.redis](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/elasticache_replication_group) | resource |
 | [aws_elasticache_subnet_group.redis](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/elasticache_subnet_group) | resource |
 | [aws_iam_policy.ecs_execution_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
@@ -109,6 +112,7 @@ See [examples/managed-services](./examples/managed-services) for a complete, dep
 | [aws_iam_policy.s3_logs_backups](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_policy) | resource |
 | [aws_iam_service_linked_role.opensearch](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_service_linked_role) | resource |
 | [aws_lb.shield_web](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb) | resource |
+| [aws_lb.squid](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb) | resource |
 | [aws_lb_listener.shield_web_http](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_listener) | resource |
 | [aws_lb_listener.shield_web_https](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_listener) | resource |
 | [aws_lb_listener.squid](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_listener) | resource |
@@ -117,6 +121,7 @@ See [examples/managed-services](./examples/managed-services) for a complete, dep
 | [aws_lb_target_group.squid](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_target_group) | resource |
 | [aws_opensearch_domain.activity](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/opensearch_domain) | resource |
 | [aws_route53_record.shield_web](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) | resource |
+| [aws_route53_record.squid](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record) | resource |
 | [aws_s3_bucket.logs_backups](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket) | resource |
 | [aws_s3_bucket_lifecycle_configuration.logs_backups](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_lifecycle_configuration) | resource |
 | [aws_s3_bucket_logging.logs_backups](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_logging) | resource |
@@ -158,6 +163,7 @@ See [examples/managed-services](./examples/managed-services) for a complete, dep
 | <a name="input_opensearch_engine_version"></a> [opensearch\_engine\_version](#input\_opensearch\_engine\_version) | OpenSearch engine version. | `string` | `"OpenSearch_2.11"` | no |
 | <a name="input_opensearch_instance_type"></a> [opensearch\_instance\_type](#input\_opensearch\_instance\_type) | OpenSearch instance type. | `string` | `"t3.small.search"` | no |
 | <a name="input_opensearch_volume_size"></a> [opensearch\_volume\_size](#input\_opensearch\_volume\_size) | OpenSearch EBS volume size in GB. | `number` | `20` | no |
+| <a name="input_proxy_host_name"></a> [proxy\_host\_name](#input\_proxy\_host\_name) | Host name for the Squid proxy's own NLB (Route53 A record). Separate from host\_name, which is used for Shield Web UI. | `string` | `null` | no |
 | <a name="input_proxy_mitm_cert"></a> [proxy\_mitm\_cert](#input\_proxy\_mitm\_cert) | Path to Squid MITM certificate (PROXY\_MITM\_CERT). | `string` | `null` | no |
 | <a name="input_proxy_mitm_key"></a> [proxy\_mitm\_key](#input\_proxy\_mitm\_key) | Path to Squid MITM private key (PROXY\_MITM\_KEY). | `string` | `null` | no |
 | <a name="input_proxy_port"></a> [proxy\_port](#input\_proxy\_port) | Port the Squid proxy listens on and is exposed via the NLB (container port, target group, listener, and security group all use this). | `number` | `44509` | no |
@@ -189,8 +195,8 @@ See [examples/managed-services](./examples/managed-services) for a complete, dep
 | <a name="output_efs_file_system_id"></a> [efs\_file\_system\_id](#output\_efs\_file\_system\_id) | EFS file system ID (Shield config). |
 | <a name="output_elasticache_redis_endpoint"></a> [elasticache\_redis\_endpoint](#output\_elasticache\_redis\_endpoint) | ElastiCache Redis primary endpoint. |
 | <a name="output_nat_gateway_ids"></a> [nat\_gateway\_ids](#output\_nat\_gateway\_ids) | IDs of the NAT gateways (single NAT for cost savings). |
-| <a name="output_nlb_dns_name"></a> [nlb\_dns\_name](#output\_nlb\_dns\_name) | NLB DNS name (Shield Web UI on ports 80/443, Squid proxy on var.proxy\_port). |
-| <a name="output_nlb_zone_id"></a> [nlb\_zone\_id](#output\_nlb\_zone\_id) | NLB Route53 zone ID (for alias records). |
+| <a name="output_nlb_dns_name"></a> [nlb\_dns\_name](#output\_nlb\_dns\_name) | Shield Web UI NLB DNS name (ports 80/443). |
+| <a name="output_nlb_zone_id"></a> [nlb\_zone\_id](#output\_nlb\_zone\_id) | Shield Web UI NLB Route53 zone ID (for alias records). |
 | <a name="output_opensearch_dashboard_endpoint"></a> [opensearch\_dashboard\_endpoint](#output\_opensearch\_dashboard\_endpoint) | Amazon OpenSearch Dashboards endpoint. |
 | <a name="output_opensearch_endpoint"></a> [opensearch\_endpoint](#output\_opensearch\_endpoint) | Amazon OpenSearch domain endpoint. |
 | <a name="output_public_subnet_ids"></a> [public\_subnet\_ids](#output\_public\_subnet\_ids) | IDs of the public subnets. |
@@ -199,6 +205,9 @@ See [examples/managed-services](./examples/managed-services) for a complete, dep
 | <a name="output_service_discovery_internal_dns"></a> [service\_discovery\_internal\_dns](#output\_service\_discovery\_internal\_dns) | Internal DNS hostnames for each service (resolved within VPC via Cloud Map). |
 | <a name="output_service_discovery_namespace"></a> [service\_discovery\_namespace](#output\_service\_discovery\_namespace) | Cloud Map private DNS namespace (e.g. nullafi.local). |
 | <a name="output_shield_web_ui_url"></a> [shield\_web\_ui\_url](#output\_shield\_web\_ui\_url) | Shield Web UI URL. |
+| <a name="output_squid_eips"></a> [squid\_eips](#output\_squid\_eips) | Elastic IP addresses assigned to the Squid proxy NLB (one per public subnet). |
+| <a name="output_squid_nlb_dns_name"></a> [squid\_nlb\_dns\_name](#output\_squid\_nlb\_dns\_name) | Squid proxy NLB DNS name (var.proxy\_port). |
+| <a name="output_squid_nlb_zone_id"></a> [squid\_nlb\_zone\_id](#output\_squid\_nlb\_zone\_id) | Squid proxy NLB Route53 zone ID (for alias records). |
 | <a name="output_squid_proxy_endpoint"></a> [squid\_proxy\_endpoint](#output\_squid\_proxy\_endpoint) | Squid proxy endpoint (configure as HTTP proxy). |
 | <a name="output_ssm_parameter_arns"></a> [ssm\_parameter\_arns](#output\_ssm\_parameter\_arns) | ARNs of SSM parameters created via ssm\_parameters (for IAM policies). |
 | <a name="output_vpc_cidr_block"></a> [vpc\_cidr\_block](#output\_vpc\_cidr\_block) | CIDR block of the VPC. |

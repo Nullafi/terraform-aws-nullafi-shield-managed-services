@@ -32,3 +32,6 @@ squid_image         = "public.ecr.aws/nullafi/proxy:latest"
 # proxy_mitm_key  = "./nullafi.key"
 # proxy_root_ca   = "./nullafi_root_ca.crt"
 # proxy_port      = 44509
+
+# Squid proxy hostname — its own NLB + Route53 A record, separate from host_name
+# proxy_host_name = "proxy.example.com"

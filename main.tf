@@ -181,7 +181,7 @@ resource "aws_lb_listener" "squid" {
 
 # ------------------------------------------------------------------------------
 # Route53 A record for the Squid proxy (optional – auto-creates DNS when
-# route53_zone_id and proxy_host_name are set). Points to the Squid NLB.
+# route53_zone_id and proxy_host_name are set). Alias to the Squid NLB.
 # ------------------------------------------------------------------------------
 resource "aws_route53_record" "squid" {
   count   = var.route53_zone_id != null && var.proxy_host_name != null ? 1 : 0
