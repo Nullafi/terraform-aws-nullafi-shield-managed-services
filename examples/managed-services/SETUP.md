@@ -45,7 +45,6 @@ You also need:
 - **A Squid MITM certificate + private key** (optional — only needed if using the Squid proxy)
 - **A public DNS hostname** you control (e.g. `shield.yourcompany.com`) — **required for HTTPS**
 - **A DNS provider supported by the Shield container** for ACME DNS-01 (Route53, Cloudflare, Namecheap, etc.)
-- **A hostname for the Squid proxy** (e.g. `proxy.yourcompany.com`) — `proxy_host_name` is optional, but required if you set `route53_zone_id` (Terraform validates this)
 
 **Check for existing OpenSearch service-linked role** in your AWS account:
 
@@ -93,9 +92,6 @@ nullafi_license_key = "FT7YC..."
 
 # Public hostname (required for HTTPS)
 host_name = "shield.yourcompany.com"
-
-# Squid proxy hostname (required since route53_zone_id is set below)
-proxy_host_name = "proxy.yourcompany.com"
 
 # Let's Encrypt — DNS-01 only (see note below)
 acme_challenge_type = "DNS-01"
@@ -151,12 +147,10 @@ Apply takes **15–25 minutes** — OpenSearch provisioning alone is typically 1
 Outputs:
   shield_web_ui_url           = "https://shield.yourcompany.com/login"
   nlb_dns_name                = "managed-services-shield-xxxxx.elb.us-east-1.amazonaws.com"
-  squid_nlb_dns_name          = "managed-services-squid-xxxxx.elb.us-east-1.amazonaws.com"
-  squid_eips                  = ["203.0.113.10", "203.0.113.11"]
   elasticache_redis_endpoint  = "managed-services-redis.xxxxx.cache.amazonaws.com"
   opensearch_endpoint         = "vpc-managed-services-activity-xxxxx.us-east-1.es.amazonaws.com"
   opensearch_dashboard_endpoint = "vpc-managed-services-activity-xxxxx.us-east-1.es.amazonaws.com/_dashboards"
-  squid_proxy_endpoint        = "managed-services-squid-xxxxx.elb.us-east-1.amazonaws.com:44509"
+  squid_proxy_endpoint        = "managed-services-shield-xxxxx.elb.us-east-1.amazonaws.com:44509"
   ecs_cluster_name            = "managed-services"
   cloudwatch_dashboard_name   = "managed-services-shield"
 ```
@@ -230,7 +224,7 @@ Then browse `https://localhost:8443/_dashboards`.
 
 ## Step 9 — Configure Squid proxy (optional)
 
-The Squid proxy has its own NLB (separate from Shield Web UI's) and is reachable at `<squid_nlb_dns_name>:44509`, or the static `squid_eips` addresses directly. Set `proxy_host_name`, independent of `host_name` (which only covers Shield Web UI), to get an auto-created alias A record pointing it at the Squid NLB — required if `route53_zone_id` is set, optional otherwise. Install the MITM certificate (`cert.crt`) as a trusted root CA on any client routing traffic through it.
+The Squid proxy is reachable at `<nlb_dns_name>:44509`. Install the MITM certificate (`cert.crt`) as a trusted root CA on any client routing traffic through it.
 
 ---
 
@@ -333,7 +327,6 @@ See `variables.tf` for all variables. Most-used:
 | `acme_dns01_provider` | yes (for HTTPS) | `null` | e.g. `route53`, `cloudflare` |
 | `acme_dns01_env` | conditional | `{}` | Provider credentials (sensitive) |
 | `route53_zone_id` | recommended if Route53 | `null` | Auto-creates A record + IAM |
-| `proxy_host_name` | required if `route53_zone_id` set | `null` | Squid proxy hostname (its own NLB/A record, separate from `host_name`) |
 | `proxy_mitm_cert` / `proxy_mitm_key` | no | `null` | Squid MITM cert files |
 | `redis_node_type` | no | `cache.t3.small` | ElastiCache node size |
 | `redis_engine_version` | no | `7.1` | Redis version |

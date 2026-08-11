@@ -47,11 +47,11 @@ resource "aws_lb" "shield_web" {
 }
 
 resource "aws_lb_target_group" "shield_web_http" {
-  name               = "${var.name_prefix}-shield-http"
-  port               = 8080
-  protocol           = "TCP"
-  vpc_id             = module.vpc.vpc_id
-  target_type        = "ip"
+  name        = "${var.name_prefix}-shield-http"
+  port        = 8080
+  protocol    = "TCP"
+  vpc_id      = module.vpc.vpc_id
+  target_type = "ip"
 
   health_check {
     enabled             = true
@@ -65,11 +65,11 @@ resource "aws_lb_target_group" "shield_web_http" {
 }
 
 resource "aws_lb_target_group" "shield_web_https" {
-  name               = "${var.name_prefix}-shield-https"
-  port               = 443
-  protocol           = "TCP"
-  vpc_id             = module.vpc.vpc_id
-  target_type        = "ip"
+  name        = "${var.name_prefix}-shield-https"
+  port        = 443
+  protocol    = "TCP"
+  vpc_id      = module.vpc.vpc_id
+  target_type = "ip"
 
   health_check {
     enabled             = true
@@ -122,40 +122,14 @@ resource "aws_route53_record" "shield_web" {
 }
 
 # ------------------------------------------------------------------------------
-# Squid proxy – dedicated NLB with fixed (Elastic IP) public addresses, TCP
-# passthrough on var.proxy_port. Kept separate from the shield_web NLB so it
-# can carry static IPs without affecting the Shield Web UI listeners.
+# Squid proxy – TCP passthrough on var.proxy_port via the same NLB
 # ------------------------------------------------------------------------------
-resource "aws_eip" "squid" {
-  count  = length(module.vpc.public_subnet_ids)
-  domain = "vpc"
-
-  tags = merge(var.tags, { Name = "${var.name_prefix}-squid-eip-${count.index}" })
-}
-
-resource "aws_lb" "squid" {
-  name               = "${var.name_prefix}-squid"
-  internal           = false
-  load_balancer_type = "network"
-
-  dynamic "subnet_mapping" {
-    for_each = module.vpc.public_subnet_ids
-    content {
-      subnet_id     = subnet_mapping.value
-      allocation_id = aws_eip.squid[subnet_mapping.key].id
-    }
-  }
-
-  tags = merge(var.tags, { Name = "${var.name_prefix}-squid-nlb" })
-}
-
 resource "aws_lb_target_group" "squid" {
-  name               = "${var.name_prefix}-squid"
-  port               = var.proxy_port
-  protocol           = "TCP"
-  vpc_id             = module.vpc.vpc_id
-  target_type        = "ip"
-  preserve_client_ip = "true"
+  name        = "${var.name_prefix}-squid"
+  port        = var.proxy_port
+  protocol    = "TCP"
+  vpc_id      = module.vpc.vpc_id
+  target_type = "ip"
 
   health_check {
     enabled             = true
@@ -169,30 +143,13 @@ resource "aws_lb_target_group" "squid" {
 }
 
 resource "aws_lb_listener" "squid" {
-  load_balancer_arn = aws_lb.squid.arn
+  load_balancer_arn = aws_lb.shield_web.arn
   port              = var.proxy_port
   protocol          = "TCP"
 
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.squid.arn
-  }
-}
-
-# ------------------------------------------------------------------------------
-# Route53 A record for the Squid proxy (auto-creates DNS when route53_zone_id
-# is set). Alias to the Squid NLB.
-# ------------------------------------------------------------------------------
-resource "aws_route53_record" "squid" {
-  count   = var.route53_zone_id != null ? 1 : 0
-  zone_id = var.route53_zone_id
-  name    = var.proxy_host_name
-  type    = "A"
-
-  alias {
-    name                   = aws_lb.squid.dns_name
-    zone_id                = aws_lb.squid.zone_id
-    evaluate_target_health = true
   }
 }
 
@@ -548,8 +505,7 @@ module "service_discovery" {
 
 # ------------------------------------------------------------------------------
 # Security groups – backend (ECS), data (ECS), EFS mount targets
-# NLBs preserve client IPs so 8080/443 and var.proxy_port must allow 0.0.0.0/0
-# for external access.
+# NLB preserves client IPs so 8080/443 must allow 0.0.0.0/0 for external access.
 # ------------------------------------------------------------------------------
 resource "aws_security_group" "backend" {
   name_prefix = "${var.name_prefix}-backend-"
@@ -571,11 +527,11 @@ resource "aws_security_group" "backend" {
     cidr_blocks = ["0.0.0.0/0"]
   }
   ingress {
-    description = "Squid proxy (var.proxy_port) - NLB + VPC"
+    description = "Squid proxy (var.proxy_port) from VPC"
     from_port   = var.proxy_port
     to_port     = var.proxy_port
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [module.vpc.vpc_cidr_block]
   }
   ingress {
     description = "Shield ICAP"

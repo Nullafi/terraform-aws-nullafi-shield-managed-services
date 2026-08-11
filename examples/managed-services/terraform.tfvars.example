@@ -15,10 +15,6 @@ name_prefix = "managed-services"
 # acme_dns01_provider = "route53"
 # route53_zone_id     = "ZXXXXXXXXXXXXX"
 
-# Squid proxy hostname — its own NLB + Route53 A record, separate from host_name.
-# Optional, but required if route53_zone_id (above) is set.
-# proxy_host_name = "proxy.example.com"
-
 # Shield license
 # For a license key file (value is a path to the file):
 # nullafi_license_key_file = "./license.key"

@@ -197,17 +197,6 @@ variable "proxy_port" {
   default     = 44509
 }
 
-variable "proxy_host_name" {
-  description = "Host name for the Squid proxy's own NLB (Route53 A record). Separate from host_name, which is used for Shield Web UI. Required when route53_zone_id is set."
-  type        = string
-  default     = null
-
-  validation {
-    condition     = var.route53_zone_id == null || var.proxy_host_name != null
-    error_message = "proxy_host_name is required when route53_zone_id is set."
-  }
-}
-
 variable "autoscaling_min_capacity" {
   description = "Default minimum number of tasks for scalable services (used when autoscaling_capacity does not specify per service)."
   type        = number
