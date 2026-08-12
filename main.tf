@@ -122,14 +122,22 @@ resource "aws_route53_record" "shield_web" {
 }
 
 # ------------------------------------------------------------------------------
-# Squid proxy – TCP passthrough on var.proxy_port via the same NLB
+# Squid proxy – TCP passthrough on var.proxy_port via the same NLB.
+#
+# Proxy protocol v2 is enabled on this target group only (it's a target-group
+# attribute, not a load-balancer/listener one, so it has no effect on the
+# shield_web_http/shield_web_https target groups sharing this NLB). Squid must
+# be told to expect the PPv2 header on its listening port — see
+# USING_LOAD_BALANCER in the squid container's environment below, which adds
+# `require-proxy-header` to squid.conf's http_port directive.
 # ------------------------------------------------------------------------------
 resource "aws_lb_target_group" "squid" {
-  name        = "${var.name_prefix}-squid"
-  port        = var.proxy_port
-  protocol    = "TCP"
-  vpc_id      = module.vpc.vpc_id
-  target_type = "ip"
+  name              = "${var.name_prefix}-squid"
+  port              = var.proxy_port
+  protocol          = "TCP"
+  vpc_id            = module.vpc.vpc_id
+  target_type       = "ip"
+  proxy_protocol_v2 = true
 
   health_check {
     enabled             = true
@@ -788,7 +796,8 @@ module "ecs_squid" {
         { name = "MITM_KEY", value = "/etc/squid6/certs/custom.pem" },
         { name = "ICAP_URL", value = "icap://shield-icap.${var.name_prefix}.local:1344" },
         { name = "ENABLE_ICAP", value = "yes" },
-        { name = "MITM_PROXY", value = "yes" }
+        { name = "MITM_PROXY", value = "yes" },
+        { name = "USING_LOAD_BALANCER", value = "yes" }
       ]
       secrets = local.service_ssm_secrets["squid"]
     }]

@@ -25,6 +25,8 @@ Internet
 
 All services run on ECS Fargate in private subnets. Only Shield Web UI (and Squid) are externally accessible via the NLB. Redis and OpenSearch are AWS-managed instead of running as containers.
 
+The `squid` target group has Proxy Protocol v2 enabled (`proxy_protocol_v2 = true`) so Squid sees the real client IP instead of the NLB's — this is scoped to that target group only and doesn't affect the Shield Web UI target groups sharing the same NLB. See the [root module's README](../../README.md#notes) for details.
+
 ## Prerequisites
 
 - Terraform >= 1.9

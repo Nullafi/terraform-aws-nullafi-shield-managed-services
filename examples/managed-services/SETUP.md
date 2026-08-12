@@ -226,6 +226,8 @@ Then browse `https://localhost:8443/_dashboards`.
 
 The Squid proxy is reachable at `<nlb_dns_name>:44509`. Install the MITM certificate (`cert.crt`) as a trusted root CA on any client routing traffic through it.
 
+The `squid` target group has Proxy Protocol v2 enabled, and the Squid container is configured (`USING_LOAD_BALANCER=yes`) to require and parse that header — this is how Squid learns the real client IP instead of the NLB's, and it's what lets the ICAP `X-Client-IP` header reflect the actual browser IP downstream. This only affects the `squid` target group; it has no effect on the Shield Web UI target groups sharing the same NLB.
+
 ---
 
 ## Step 10 — Review CloudWatch monitoring
