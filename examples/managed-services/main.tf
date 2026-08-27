@@ -51,6 +51,10 @@ module "shield" {
   nullafi_license_key_file = var.nullafi_license_key_file
   nullafi_license_key      = var.nullafi_license_key
 
+  nullafi_cypher_key          = var.nullafi_cypher_key
+  nullafi_cypher_token_prefix = var.nullafi_cypher_token_prefix
+  nullafi_cypher_algorithm    = var.nullafi_cypher_algorithm
+
   acme_challenge_type = var.acme_challenge_type
   acme_dns01_provider = var.acme_dns01_provider
   acme_dns01_env      = var.acme_dns01_env

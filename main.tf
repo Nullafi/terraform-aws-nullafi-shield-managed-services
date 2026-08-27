@@ -193,12 +193,16 @@ locals {
   has_root_ca     = var.proxy_root_ca != null
   root_ca_content = local.has_root_ca ? file(var.proxy_root_ca) : null
 
+  # Shield ICAP cypher key (stored in Secrets Manager, not passed as plain env)
+  has_cypher_key = var.nullafi_cypher_key != null && var.nullafi_cypher_key != ""
+
   # Collect secret names to create
   secret_names = toset(concat(
     ["elastic-password"],
     nonsensitive(local.has_license_key) ? ["license-key"] : [],
     nonsensitive(local.has_mitm_cert) ? ["mitm-cert", "mitm-key"] : [],
-    local.has_root_ca ? ["root-ca"] : []
+    local.has_root_ca ? ["root-ca"] : [],
+    nonsensitive(local.has_cypher_key) ? ["cypher-key"] : []
   ))
 
   # Collect secret values
@@ -211,6 +215,9 @@ locals {
     } : {},
     local.has_root_ca ? {
       "root-ca" = { value = local.root_ca_content, recovery_window_in_days = 0 }
+    } : {},
+    local.has_cypher_key ? {
+      "cypher-key" = { value = var.nullafi_cypher_key, recovery_window_in_days = 0 }
     } : {}
   )
 }
@@ -683,11 +690,23 @@ locals {
     { name = "NULLAFI_LICENSE_KEY_VALUE", valueFrom = module.secrets.secret_arns["license-key"] }
   ] : []
 
+  # Secrets Manager -> container secrets for Shield ICAP only (cypher key)
+  shield_icap_secrets = local.has_cypher_key ? [
+    { name = "NULLAFI_CYPHER_KEY", valueFrom = module.secrets.secret_arns["cypher-key"] }
+  ] : []
+
   shield_common_env = [
     { name = "NULLAFI_HTTP_CUSTOM_DOMAIN", value = var.host_name != null ? var.host_name : "" },
     { name = "NULLAFI_OPENSEARCH_AUTH_MODE", value = "aws_iam" },
     { name = "NULLAFI_ACTIVITY_DATABASE_URL", value = "https://${aws_opensearch_domain.activity.endpoint}:443" },
     { name = "NULLAFI_REDIS_URI", value = "redis://${aws_elasticache_replication_group.redis.primary_endpoint_address}:6379/0" }
+  ]
+
+  # Shield ICAP tokenization env vars (non-secret; the cypher key itself goes
+  # through Secrets Manager instead — see shield_icap_secrets).
+  shield_icap_cypher_env = [
+    { name = "NULLAFI_CYPHER_TOKEN_PREFIX", value = var.nullafi_cypher_token_prefix },
+    { name = "NULLAFI_CYPHER_ALGORITHM", value = var.nullafi_cypher_algorithm }
   ]
 
   # ACME/Let's Encrypt env vars for shield-web-ui
@@ -890,11 +909,11 @@ module "ecs_shield_icap" {
     mountPoints            = local.ca_cert_mount
     logConfiguration       = local.log_config
     dependsOn              = local.ca_cert_depends_on
-    environment = concat(local.shield_common_env, [
+    environment = concat(local.shield_common_env, local.shield_icap_cypher_env, [
       { name = "NULLAFI_SERVERMODE", value = "icap" },
       { name = "NULLAFI_NODE_NAME", value = "Policy 1" }
     ])
-    secrets = concat(local.service_ssm_secrets["shield-icap"], local.shield_secrets)
+    secrets = concat(local.service_ssm_secrets["shield-icap"], local.shield_secrets, local.shield_icap_secrets)
   }]))
 
   tags = var.tags

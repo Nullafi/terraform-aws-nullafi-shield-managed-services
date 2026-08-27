@@ -128,6 +128,25 @@ variable "nullafi_license_key" {
   sensitive   = true
 }
 
+variable "nullafi_cypher_key" {
+  description = "Nullafi cypher key for Shield ICAP (env value for NULLAFI_CYPHER_KEY). Optional; when set, stored in AWS Secrets Manager and passed to the shield-icap container at runtime via secrets (valueFrom) rather than as a plain environment value. Omitted entirely when unset."
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
+variable "nullafi_cypher_token_prefix" {
+  description = "Token prefix for Shield ICAP tokenization (env value for NULLAFI_CYPHER_TOKEN_PREFIX)."
+  type        = string
+  default     = "NFA_"
+}
+
+variable "nullafi_cypher_algorithm" {
+  description = "Cypher algorithm for Shield ICAP tokenization (env value for NULLAFI_CYPHER_ALGORITHM)."
+  type        = string
+  default     = "aes-256-siv"
+}
+
 variable "acme_challenge_type" {
   description = "ACME challenge type for Let's Encrypt. Only DNS-01 is supported for ECS Fargate + NLB deployments (HTTP-01 and TLS-ALPN-01 fail due to NLB health check gating — the container won't serve traffic until it has a cert, but can't get a cert without inbound traffic)."
   type        = string

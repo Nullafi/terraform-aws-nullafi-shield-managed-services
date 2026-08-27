@@ -90,6 +90,12 @@ squid_image         = "repo.ecr.com/nullafi/proxy:latest"
 # Nullafi license
 nullafi_license_key = "FT7YC..."
 
+# Shield ICAP cypher/tokenization (optional). nullafi_cypher_key, if set, is
+# stored in Secrets Manager and passed to shield-icap via secrets/valueFrom.
+# nullafi_cypher_key          = "..."
+# nullafi_cypher_token_prefix = "NFA_"        # default
+# nullafi_cypher_algorithm    = "aes-256-siv" # default
+
 # Public hostname (required for HTTPS)
 host_name = "shield.yourcompany.com"
 
@@ -324,6 +330,9 @@ See `variables.tf` for all variables. Most-used:
 | `shield_alert_image` | yes | — | Shield Alert image |
 | `squid_image` | yes | — | Squid proxy image |
 | `nullafi_license_key` | yes | — | Nullafi license key |
+| `nullafi_cypher_key` | no | `null` | Shield ICAP cypher key; stored in Secrets Manager, passed via `secrets`/`valueFrom` when set, omitted entirely when unset |
+| `nullafi_cypher_token_prefix` | no | `NFA_` | Shield ICAP tokenization prefix |
+| `nullafi_cypher_algorithm` | no | `aes-256-siv` | Shield ICAP cypher algorithm |
 | `host_name` | required for HTTPS | `null` | Public hostname |
 | `acme_challenge_type` | no | `DNS-01` | DNS-01 only (enforced) |
 | `acme_dns01_provider` | yes (for HTTPS) | `null` | e.g. `route53`, `cloudflare` |

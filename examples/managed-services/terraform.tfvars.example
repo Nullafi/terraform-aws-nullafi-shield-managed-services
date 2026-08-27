@@ -21,6 +21,13 @@ name_prefix = "managed-services"
 # For a raw license key value instead:
 # nullafi_license_key = "REPLACE_WITH_LICENSE_KEY"
 
+# Shield ICAP cypher/tokenization (optional). nullafi_cypher_key has no
+# default; when set it's stored in AWS Secrets Manager and passed to
+# shield-icap via secrets/valueFrom, not as a plain environment value.
+# nullafi_cypher_key          = "REPLACE_WITH_CYPHER_KEY"
+# nullafi_cypher_token_prefix = "NFA_"        # default
+# nullafi_cypher_algorithm    = "aes-256-siv" # default
+
 # Docker images
 shield_alert_image  = "public.ecr.aws/nullafi/shield:latest"
 shield_icap_image   = "public.ecr.aws/nullafi/shield:latest"
