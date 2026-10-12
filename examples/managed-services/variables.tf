@@ -124,7 +124,7 @@ variable "opensearch_volume_size" {
 }
 
 variable "create_opensearch_service_linked_role" {
-  description = "Whether to create the OpenSearch service-linked role. Set to false if it already exists in the account."
+  description = "Create the account-wide OpenSearch service-linked role. Set false if it already exists in the account (e.g. another environment created it)."
   type        = bool
   default     = true
 }

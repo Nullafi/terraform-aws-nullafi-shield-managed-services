@@ -39,3 +39,8 @@ squid_image         = "public.ecr.aws/nullafi/proxy:latest"
 # proxy_mitm_key  = "./nullafi.key"
 # proxy_root_ca   = "./nullafi_root_ca.crt"
 # proxy_port      = 44509
+
+# OpenSearch service-linked role is account-wide. Set false when it already
+# exists (e.g. a second deployment in the same account), otherwise apply fails
+# with "Service role name AWSServiceRoleForAmazonOpenSearchService has been taken".
+# create_opensearch_service_linked_role = false
