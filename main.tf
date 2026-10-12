@@ -785,20 +785,28 @@ module "ecs_squid" {
   }
 
   container_definitions = jsonencode(concat(
-    # Init container: write MITM cert/key from Secrets Manager to shared volume
-    local.has_mitm_cert ? [{
+    # Init container: write the bypass URL list (always — squid.conf references
+    # bypass_urls.txt unconditionally) and, when provided, the MITM cert/key
+    # from Secrets Manager to the shared volume
+    [{
       name                   = "cert-init"
       image                  = "public.ecr.aws/docker/library/busybox:latest"
       essential              = false
       readonlyRootFilesystem = true
-      command                = ["sh", "-c", "echo \"$MITM_CERT_CONTENT\" > /certs/custom.crt && echo \"$MITM_KEY_CONTENT\" > /certs/custom.pem && chmod 600 /certs/custom.pem"]
-      mountPoints            = [{ sourceVolume = "squid-certs", containerPath = "/certs", readOnly = false }]
-      logConfiguration       = local.log_config
-      secrets = [
+      command = ["sh", "-c", join(" && ", concat(
+        ["printf '%s' \"$BYPASS_URLS_CONTENT\" > /certs/bypass_urls.txt"],
+        local.has_mitm_cert ? ["echo \"$MITM_CERT_CONTENT\" > /certs/custom.crt", "echo \"$MITM_KEY_CONTENT\" > /certs/custom.pem", "chmod 600 /certs/custom.pem"] : []
+      ))]
+      mountPoints      = [{ sourceVolume = "squid-certs", containerPath = "/certs", readOnly = false }]
+      logConfiguration = local.log_config
+      environment = [
+        { name = "BYPASS_URLS_CONTENT", value = length(var.proxy_bypass_urls) > 0 ? "${join("\n", var.proxy_bypass_urls)}\n" : "" }
+      ]
+      secrets = local.has_mitm_cert ? [
         { name = "MITM_CERT_CONTENT", valueFrom = module.secrets.secret_arns["mitm-cert"] },
         { name = "MITM_KEY_CONTENT", valueFrom = module.secrets.secret_arns["mitm-key"] }
-      ]
-    }] : [],
+      ] : []
+    }],
     # Main Squid container
     [{
       name                   = "squid"
@@ -808,16 +816,18 @@ module "ecs_squid" {
       portMappings           = [{ containerPort = var.proxy_port, protocol = "tcp" }]
       mountPoints            = [{ sourceVolume = "squid-certs", containerPath = "/etc/squid6/certs", readOnly = true }]
       logConfiguration       = local.log_config
-      dependsOn              = local.has_mitm_cert ? [{ containerName = "cert-init", condition = "SUCCESS" }] : []
-      environment = [
-        { name = "BYPASS_URLS", value = "/etc/squid6/urls.txt" },
+      dependsOn              = [{ containerName = "cert-init", condition = "SUCCESS" }]
+      environment = concat([
+        { name = "BYPASS_URLS", value = "/etc/squid6/certs/bypass_urls.txt" }
+        ], local.has_mitm_cert ? [
         { name = "MITM_CERT", value = "/etc/squid6/certs/custom.crt" },
-        { name = "MITM_KEY", value = "/etc/squid6/certs/custom.pem" },
+        { name = "MITM_KEY", value = "/etc/squid6/certs/custom.pem" }
+        ] : [], [
         { name = "ICAP_URL", value = "icap://shield-icap.${var.name_prefix}.local:1344" },
         { name = "ENABLE_ICAP", value = "yes" },
         { name = "MITM_PROXY", value = "yes" },
         { name = "USING_LOAD_BALANCER", value = "yes" }
-      ]
+      ])
       secrets = local.service_ssm_secrets["squid"]
     }]
   ))

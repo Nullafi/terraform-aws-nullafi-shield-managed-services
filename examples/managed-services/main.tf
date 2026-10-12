@@ -60,10 +60,11 @@ module "shield" {
   acme_dns01_env      = var.acme_dns01_env
   route53_zone_id     = var.route53_zone_id
 
-  proxy_mitm_cert = var.proxy_mitm_cert
-  proxy_mitm_key  = var.proxy_mitm_key
-  proxy_root_ca   = var.proxy_root_ca
-  proxy_port      = var.proxy_port
+  proxy_mitm_cert   = var.proxy_mitm_cert
+  proxy_mitm_key    = var.proxy_mitm_key
+  proxy_root_ca     = var.proxy_root_ca
+  proxy_port        = var.proxy_port
+  proxy_bypass_urls = var.proxy_bypass_urls
 
   autoscaling_min_capacity       = var.autoscaling_min_capacity
   autoscaling_max_capacity       = var.autoscaling_max_capacity

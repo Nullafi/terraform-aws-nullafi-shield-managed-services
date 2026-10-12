@@ -114,7 +114,7 @@ variable "opensearch_instance_type" {
 variable "opensearch_engine_version" {
   description = "OpenSearch engine version."
   type        = string
-  default     = "OpenSearch_2.11"
+  default     = "OpenSearch_3.7"
 }
 
 variable "opensearch_volume_size" {
@@ -208,6 +208,12 @@ variable "proxy_root_ca" {
   description = "Path to root CA certificate that issued the MITM cert. Installed as trusted CA in shield containers."
   type        = string
   default     = null
+}
+
+variable "proxy_bypass_urls" {
+  description = "Domains Squid splices (no TLS interception) and sends direct. Squid dstdomain syntax, e.g. \".example.com\" matches the domain and its subdomains."
+  type        = list(string)
+  default     = []
 }
 
 variable "proxy_port" {

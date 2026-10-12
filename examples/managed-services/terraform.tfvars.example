@@ -40,6 +40,10 @@ squid_image         = "public.ecr.aws/nullafi/proxy:latest"
 # proxy_root_ca   = "./nullafi_root_ca.crt"
 # proxy_port      = 44509
 
+# Domains Squid passes through without TLS interception (dstdomain syntax;
+# a leading dot also matches subdomains). Default: none.
+# proxy_bypass_urls = [".example.com", "updates.vendor.io"]
+
 # OpenSearch service-linked role is account-wide. Set false when it already
 # exists (e.g. a second deployment in the same account), otherwise apply fails
 # with "Service role name AWSServiceRoleForAmazonOpenSearchService has been taken".

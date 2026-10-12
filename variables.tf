@@ -100,7 +100,7 @@ variable "opensearch_instance_type" {
 variable "opensearch_engine_version" {
   description = "OpenSearch engine version."
   type        = string
-  default     = "OpenSearch_2.11"
+  default     = "OpenSearch_3.7"
 }
 
 variable "opensearch_volume_size" {
@@ -178,22 +178,38 @@ variable "route53_zone_id" {
 }
 
 variable "proxy_mitm_cert" {
-  description = "Path to Squid MITM certificate (PROXY_MITM_CERT)."
+  description = "Path to Squid MITM certificate (PROXY_MITM_CERT). PEM-encoded CA certificate (CA:TRUE) that Squid signs generated host certificates with."
   type        = string
   default     = null
+
+  validation {
+    condition     = var.proxy_mitm_cert == null || can(regex("-----BEGIN CERTIFICATE-----", file(var.proxy_mitm_cert)))
+    error_message = "proxy_mitm_cert must be a PEM file containing a \"-----BEGIN CERTIFICATE-----\" block (not a key, DER, or empty file)."
+  }
 }
 
 variable "proxy_mitm_key" {
-  description = "Path to Squid MITM private key (PROXY_MITM_KEY)."
+  description = "Path to Squid MITM private key (PROXY_MITM_KEY). Unencrypted PEM key matching proxy_mitm_cert."
   type        = string
   default     = null
   sensitive   = true
+
+  validation {
+    condition     = var.proxy_mitm_key == null || can(regex("-----BEGIN (RSA |EC )?PRIVATE KEY-----", file(var.proxy_mitm_key)))
+    error_message = "proxy_mitm_key must be an unencrypted PEM private key file (\"-----BEGIN PRIVATE KEY-----\", RSA or EC)."
+  }
 }
 
 variable "proxy_root_ca" {
   description = "Path to root CA certificate that issued the MITM cert. Installed as trusted CA in shield containers."
   type        = string
   default     = null
+}
+
+variable "proxy_bypass_urls" {
+  description = "Domains Squid splices (no TLS interception) and sends direct. Squid dstdomain syntax, e.g. \".example.com\" matches the domain and its subdomains."
+  type        = list(string)
+  default     = []
 }
 
 variable "proxy_port" {

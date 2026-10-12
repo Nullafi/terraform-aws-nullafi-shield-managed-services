@@ -123,7 +123,7 @@ redis_engine_version  = "7.1"
 
 # OpenSearch
 opensearch_instance_type  = "t3.small.search"  # default
-opensearch_engine_version = "OpenSearch_2.11"
+opensearch_engine_version = "OpenSearch_3.7"
 opensearch_volume_size    = 20                 # GB, default
 ```
 
@@ -267,7 +267,7 @@ terraform apply
 
 **Managed service upgrades**:
 - **ElastiCache engine version**: Change `redis_engine_version`. AWS performs the upgrade during the next maintenance window — can cause brief connection disruption.
-- **OpenSearch engine version**: Change `opensearch_engine_version`. AWS performs blue/green upgrade (no downtime but takes 1–2 hours).
+- **OpenSearch engine version**: Change `opensearch_engine_version`. AWS performs blue/green upgrade (no downtime but takes 1–2 hours). Upgrades only move to versions AWS lists as compatible (`aws opensearch get-compatible-versions --domain-name <name_prefix>-activity`). A 2.x domain must reach `OpenSearch_2.19` before it can go to 3.x, so upgrade from 2.11 in two applies: `OpenSearch_2.19`, then `OpenSearch_3.7`. Downgrades are not possible.
 
 ---
 
@@ -342,7 +342,7 @@ See `variables.tf` for all variables. Most-used:
 | `redis_node_type` | no | `cache.t3.small` | ElastiCache node size |
 | `redis_engine_version` | no | `7.1` | Redis version |
 | `opensearch_instance_type` | no | `t3.small.search` | OpenSearch node size |
-| `opensearch_engine_version` | no | `OpenSearch_2.11` | OpenSearch version |
+| `opensearch_engine_version` | no | `OpenSearch_3.7` | OpenSearch version |
 | `opensearch_volume_size` | no | `20` | EBS volume in GB |
 | `create_opensearch_service_linked_role` | no | `true` | Set `false` if role exists |
 | `name_prefix` | no | `managed-services` | Resource name prefix |

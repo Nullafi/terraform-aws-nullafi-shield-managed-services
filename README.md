@@ -160,9 +160,10 @@ See [examples/managed-services](./examples/managed-services) for a complete, dep
 | <a name="input_nullafi_cypher_token_prefix"></a> [nullafi\_cypher\_token\_prefix](#input\_nullafi\_cypher\_token\_prefix) | Token prefix for Shield ICAP tokenization (env value for NULLAFI\_CYPHER\_TOKEN\_PREFIX). | `string` | `"NFA_"` | no |
 | <a name="input_nullafi_license_key"></a> [nullafi\_license\_key](#input\_nullafi\_license\_key) | Raw Nullafi license key (env value for NULLAFI\_LICENSE\_KEY). Prefer SSM for secrets. | `string` | `null` | no |
 | <a name="input_nullafi_license_key_file"></a> [nullafi\_license\_key\_file](#input\_nullafi\_license\_key\_file) | Path to Nullafi license key file (env value for NULLAFI\_LICENSE\_KEY\_FILE). | `string` | `null` | no |
-| <a name="input_opensearch_engine_version"></a> [opensearch\_engine\_version](#input\_opensearch\_engine\_version) | OpenSearch engine version. | `string` | `"OpenSearch_2.11"` | no |
+| <a name="input_opensearch_engine_version"></a> [opensearch\_engine\_version](#input\_opensearch\_engine\_version) | OpenSearch engine version. | `string` | `"OpenSearch_3.7"` | no |
 | <a name="input_opensearch_instance_type"></a> [opensearch\_instance\_type](#input\_opensearch\_instance\_type) | OpenSearch instance type. | `string` | `"t3.small.search"` | no |
 | <a name="input_opensearch_volume_size"></a> [opensearch\_volume\_size](#input\_opensearch\_volume\_size) | OpenSearch EBS volume size in GB. | `number` | `20` | no |
+| <a name="input_proxy_bypass_urls"></a> [proxy\_bypass\_urls](#input\_proxy\_bypass\_urls) | Domains Squid splices (no TLS interception) and sends direct. Squid dstdomain syntax, e.g. ".example.com" matches the domain and its subdomains. | `list(string)` | `[]` | no |
 | <a name="input_proxy_mitm_cert"></a> [proxy\_mitm\_cert](#input\_proxy\_mitm\_cert) | Path to Squid MITM certificate (PROXY\_MITM\_CERT). | `string` | `null` | no |
 | <a name="input_proxy_mitm_key"></a> [proxy\_mitm\_key](#input\_proxy\_mitm\_key) | Path to Squid MITM private key (PROXY\_MITM\_KEY). | `string` | `null` | no |
 | <a name="input_proxy_port"></a> [proxy\_port](#input\_proxy\_port) | Port the Squid proxy listens on and is exposed via the NLB (container port, target group, listener, and security group all use this). | `number` | `44509` | no |
