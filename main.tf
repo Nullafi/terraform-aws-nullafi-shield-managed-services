@@ -699,7 +699,8 @@ locals {
     { name = "NULLAFI_HTTP_CUSTOM_DOMAIN", value = var.host_name != null ? var.host_name : "" },
     { name = "NULLAFI_OPENSEARCH_AUTH_MODE", value = "aws_iam" },
     { name = "NULLAFI_ACTIVITY_DATABASE_URL", value = "https://${aws_opensearch_domain.activity.endpoint}:443" },
-    { name = "NULLAFI_REDIS_URI", value = "redis://${aws_elasticache_replication_group.redis.primary_endpoint_address}:6379/0" }
+    { name = "NULLAFI_REDIS_URI", value = "redis://${aws_elasticache_replication_group.redis.primary_endpoint_address}:6379/0" },
+    { name = "NULLAFI_ACTIVITY_FALLBACK_DIR", value = local.activity_fallback_path }
   ]
 
   # Shield ICAP tokenization env vars (non-secret; the cypher key itself goes
@@ -750,6 +751,17 @@ locals {
 
   # mountPoint for main container
   ca_cert_mount = local.has_root_ca ? [{ sourceVolume = "ca-certs", containerPath = "/usr/local/share/ca-certificates", readOnly = true }] : []
+
+  # Activity fallback spool: while OpenSearch is unreachable, shield writes
+  # activity/alert-log records here (NULLAFI_ACTIVITY_FALLBACK_DIR) and
+  # replays them once it's back. Shield's default is a path under its
+  # read-only root filesystem, so it needs a writable volume. Task-scoped
+  # (Fargate ephemeral storage), not EFS: every replica of a service shares
+  # the same NULLAFI_NODE_NAME, so on a shared EFS directory replicas would
+  # append to and drain the same spool files concurrently.
+  activity_fallback_path   = "/apps/nullafi/activity-fallback"
+  activity_fallback_volume = [{ name = "activity-fallback", efs_volume_configuration = null }]
+  activity_fallback_mount  = [{ sourceVolume = "activity-fallback", containerPath = local.activity_fallback_path, readOnly = false }]
 }
 
 # ------------------------------------------------------------------------------
@@ -858,7 +870,7 @@ module "ecs_shield_web" {
     { target_group_arn = aws_lb_target_group.shield_web_https.arn, container_name = "shield-web-ui", container_port = 443 }
   ]
 
-  volumes = concat(local.ca_certs_volume, [{
+  volumes = concat(local.ca_certs_volume, local.activity_fallback_volume, [{
     name = "shield-certs"
     efs_volume_configuration = {
       file_system_id  = module.efs_certs.file_system_id
@@ -876,7 +888,7 @@ module "ecs_shield_web" {
       { containerPort = 8080, protocol = "tcp" },
       { containerPort = 443, protocol = "tcp" }
     ]
-    mountPoints = concat(local.ca_cert_mount, [
+    mountPoints = concat(local.ca_cert_mount, local.activity_fallback_mount, [
       { sourceVolume = "shield-certs", containerPath = "/data/certs", readOnly = false }
     ])
     logConfiguration = local.log_config
@@ -908,7 +920,7 @@ module "ecs_shield_icap" {
   autoscaling_target_cpu_percent = var.autoscaling_target_cpu_percent
   service_registry_arn           = module.service_discovery.service_arns["shield-icap"]
 
-  volumes = local.ca_certs_volume
+  volumes = concat(local.ca_certs_volume, local.activity_fallback_volume)
 
   container_definitions = jsonencode(concat(local.ca_cert_init_container, [{
     name                   = "shield-icap"
@@ -916,7 +928,7 @@ module "ecs_shield_icap" {
     essential              = true
     readonlyRootFilesystem = true
     portMappings           = [{ containerPort = 1344, protocol = "tcp" }]
-    mountPoints            = local.ca_cert_mount
+    mountPoints            = concat(local.ca_cert_mount, local.activity_fallback_mount)
     logConfiguration       = local.log_config
     dependsOn              = local.ca_cert_depends_on
     environment = concat(local.shield_common_env, local.shield_icap_cypher_env, [
@@ -947,7 +959,7 @@ module "ecs_shield_alert" {
   autoscaling_target_cpu_percent = var.autoscaling_target_cpu_percent
   service_registry_arn           = module.service_discovery.service_arns["shield-alert"]
 
-  volumes = local.ca_certs_volume
+  volumes = concat(local.ca_certs_volume, local.activity_fallback_volume)
 
   container_definitions = jsonencode(concat(local.ca_cert_init_container, [{
     name                   = "shield-alert"
@@ -955,7 +967,7 @@ module "ecs_shield_alert" {
     essential              = true
     readonlyRootFilesystem = true
     portMappings           = []
-    mountPoints            = local.ca_cert_mount
+    mountPoints            = concat(local.ca_cert_mount, local.activity_fallback_mount)
     logConfiguration       = local.log_config
     dependsOn              = local.ca_cert_depends_on
     environment = concat(local.shield_common_env, [
